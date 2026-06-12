@@ -1,0 +1,8 @@
+{
+  "name": "Klinik Kesehatan GPIB Bukit Zaitun Makassar",
+  "description": "Portal kesehatan digital Klinik Kesehatan GPIB Bukit Zaitun Makassar. Melayani Dengan Kasih, Menyembuhkan Dengan Harapan. Menghadirkan asisten triase AI interaktif dan rekam medis digital.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
