@@ -26,6 +26,62 @@ export default function AdminDashboard({ currentRole, onPostLog }: AdminDashboar
     faithInterventions: 54
   });
 
+  // Role Management State
+  const [activeUserEmail, setActiveUserEmail] = useState("");
+  const [authorizedDoctors, setAuthorizedDoctors] = useState<string[]>([]);
+  const [authorizedAdmins, setAuthorizedAdmins] = useState<string[]>([]);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState<"DOCTOR" | "ADMIN">("DOCTOR");
+  const MASTER_ADMIN = "fritssigerdkayadoe@gmail.com";
+
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem("currentUser");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        setActiveUserEmail(u.email);
+      }
+      const docs = JSON.parse(localStorage.getItem("authorizedDoctors") || '["dr.sarah@gpibbukitzaitun.org"]');
+      const admins = JSON.parse(localStorage.getItem("authorizedAdmins") || '["admin@gpibbukitzaitun.org"]');
+      setAuthorizedDoctors(docs);
+      setAuthorizedAdmins(admins);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const handleAddUser = () => {
+    if (!newUserEmail) return;
+    if (newUserRole === "DOCTOR" && !authorizedDoctors.includes(newUserEmail)) {
+      const newDocs = [...authorizedDoctors, newUserEmail];
+      setAuthorizedDoctors(newDocs);
+      localStorage.setItem("authorizedDoctors", JSON.stringify(newDocs));
+    } else if (newUserRole === "ADMIN" && !authorizedAdmins.includes(newUserEmail)) {
+      const newAdms = [...authorizedAdmins, newUserEmail];
+      setAuthorizedAdmins(newAdms);
+      localStorage.setItem("authorizedAdmins", JSON.stringify(newAdms));
+    }
+    onPostLog("Hak Akses Ditambahkan", `Master Admin mendaftarkan ${newUserEmail} sebagai ${newUserRole}`);
+    setNewUserEmail("");
+  };
+
+  const handleRemoveUser = (email: string, role: string) => {
+    if (email === MASTER_ADMIN) {
+      alert("Master Admin tidak dapat dihapus.");
+      return;
+    }
+    if (role === "DOCTOR") {
+      const newDocs = authorizedDoctors.filter(e => e !== email);
+      setAuthorizedDoctors(newDocs);
+      localStorage.setItem("authorizedDoctors", JSON.stringify(newDocs));
+    } else if (role === "ADMIN") {
+      const newAdms = authorizedAdmins.filter(e => e !== email);
+      setAuthorizedAdmins(newAdms);
+      localStorage.setItem("authorizedAdmins", JSON.stringify(newAdms));
+    }
+    onPostLog("Hak Akses Dicabut", `Master Admin menghapus akses ${email} sebagai ${role}`);
+  };
+
   const fetchLogs = async () => {
     setLoading(true);
     try {
@@ -141,6 +197,79 @@ export default function AdminDashboard({ currentRole, onPostLog }: AdminDashboar
       </div>
 
       {/* Overview Stat Widgets */}
+
+      {/* Role Management Widget (Only for Master Admin) */}
+      {activeUserEmail === MASTER_ADMIN && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 font-sans">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Users className="h-5 w-5 text-brand-green" />
+              <span>Manajemen Otorisasi Sistem (Master Admin)</span>
+            </h3>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <input 
+              type="email" 
+              placeholder="Masukkan email (Google/Custom) baru..." 
+              value={newUserEmail}
+              onChange={(e) => setNewUserEmail(e.target.value)}
+              className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-brand-blue"
+            />
+            <select 
+              value={newUserRole}
+              onChange={(e) => setNewUserRole(e.target.value as "DOCTOR" | "ADMIN")}
+              className="p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-brand-blue bg-white"
+            >
+              <option value="DOCTOR">Hak Akses: DOKTER RELAWAN</option>
+              <option value="ADMIN">Hak Akses: ADMIN DIAKONIA</option>
+            </select>
+            <button 
+              onClick={handleAddUser}
+              className="px-4 py-2 bg-brand-green hover:bg-green-700 text-white font-bold rounded-lg text-sm transition"
+            >
+              Daftarkan Akses
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Admin List */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Daftar Admin Diakonia</h4>
+              <ul className="space-y-2">
+                <li className="flex justify-between items-center text-sm font-semibold bg-white p-2 rounded-lg border border-slate-200">
+                  <span className="text-brand-blue">{MASTER_ADMIN} <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded ml-2">MASTER</span></span>
+                </li>
+                {authorizedAdmins.map((email) => (
+                  <li key={email} className="flex justify-between items-center text-sm font-semibold bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-slate-700">{email}</span>
+                    <button onClick={() => handleRemoveUser(email, "ADMIN")} className="text-rose-500 hover:text-rose-700">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Doctor List */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Daftar Dokter Relawan</h4>
+              <ul className="space-y-2">
+                {authorizedDoctors.length === 0 && <li className="text-xs text-slate-400">Belum ada dokter terdaftar.</li>}
+                {authorizedDoctors.map((email) => (
+                  <li key={email} className="flex justify-between items-center text-sm font-semibold bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-slate-700">{email}</span>
+                    <button onClick={() => handleRemoveUser(email, "DOCTOR")} className="text-rose-500 hover:text-rose-700">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
           <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider font-bold">Pasien Terdaftar</span>

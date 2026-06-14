@@ -310,49 +310,6 @@ export default function App() {
 
           {/* Perspective Switching Hub */}
           <div className="flex items-center gap-2">
-            <span className="hidden md:inline text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Tampilan Demo:</span>
-            
-            <div className="bg-slate-100 border border-slate-200 rounded-xl p-1 flex items-center gap-1">
-              <button
-                onClick={() => handleEnterPortal(Role.PATIENT)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  currentRole === Role.PATIENT 
-                    ? "bg-white text-brand-blue shadow-xs border border-slate-200/50" 
-                    : "text-slate-500 hover:text-slate-700 font-semibold"
-                }`}
-                id="switcher-btn-patient"
-              >
-                <User className="h-3.5 w-3.5 text-brand-blue" />
-                <span>Pasien</span>
-              </button>
-              
-              <button
-                onClick={() => handleEnterPortal(Role.DOCTOR)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  currentRole === Role.DOCTOR 
-                    ? "bg-white text-brand-blue shadow-xs border border-slate-200/50" 
-                    : "text-slate-500 hover:text-slate-700 font-semibold"
-                }`}
-                id="switcher-btn-doctor"
-              >
-                <Users className="h-3.5 w-3.5 text-brand-blue" />
-                <span>Dokter</span>
-              </button>
-              
-              <button
-                onClick={() => handleEnterPortal(Role.ADMIN)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  currentRole === Role.ADMIN 
-                    ? "bg-white text-brand-blue shadow-xs border border-slate-200/50" 
-                    : "text-slate-500 hover:text-slate-700 font-semibold"
-                }`}
-                id="switcher-btn-admin"
-              >
-                <Database className="h-3.5 w-3.5 text-brand-blue" />
-                <span>Admin</span>
-              </button>
-            </div>
-
             {currentRole !== null && (
               <button
                 onClick={handleReturnHome}

@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { 
   Heart, Calendar, Clock, MapPin, Sparkles, CheckCircle2, 
-  HelpCircle, Users, Shield, Plus, HeartHandshake, Stethoscope, Pill, Globe 
+  HelpCircle, Users, Shield, Plus, HeartHandshake, Stethoscope, Pill, Globe, Database 
 } from "lucide-react";
 import { GpibLogo } from "./GpibLogo";
 
@@ -28,6 +28,7 @@ const DICTIONARY = {
     btnStart: "Mulai Triase Gejala",
     btnPatient: "Masuk Portal Pasien",
     btnDoctor: "Konsol Dokter Relawan",
+    btnAdmin: "Dashboard Admin",
     pillarTitle: "4 Pilar Utama Pelayanan Kami",
     programTitle: "PROGRAM DIAKONIA KESEHATAN",
     pillars: [
@@ -68,6 +69,7 @@ const DICTIONARY = {
     btnStart: "Begin Triage Dialogue",
     btnPatient: "Enter Patient Portal",
     btnDoctor: "Volunteer Doctor Console",
+    btnAdmin: "Admin Dashboard",
     pillarTitle: "The 4 Pillars of Our Service",
     programTitle: "CHURCH DIAKONIA HEALTHCARE PROGRAM",
     pillars: [
@@ -192,7 +194,7 @@ export default function LandingPage({ onEnterPortal }: LandingPageProps) {
         </div>
 
         {/* Portal Access Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-md">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-2xl mt-4">
           <button
             onClick={() => onEnterPortal("PATIENT")}
             className="flex-1 px-6 py-3.5 bg-brand-blue hover:bg-opacity-95 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer text-sm"
@@ -209,6 +211,15 @@ export default function LandingPage({ onEnterPortal }: LandingPageProps) {
           >
             <Clock className="h-4.5 w-4.5 text-brand-green" />
             <span>{t.btnDoctor}</span>
+          </button>
+
+          <button
+            onClick={() => onEnterPortal("ADMIN")}
+            className="flex-1 px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl shadow-xs transition duration-200 flex items-center justify-center gap-2 cursor-pointer text-sm"
+            id="btn-admin-portal-landing"
+          >
+            <Database className="h-4.5 w-4.5 text-slate-300" />
+            <span>{t.btnAdmin}</span>
           </button>
         </div>
       </section>

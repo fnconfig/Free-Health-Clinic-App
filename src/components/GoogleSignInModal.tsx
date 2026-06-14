@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shield, Sparkles, X, Check, Lock, ChevronRight } from "lucide-react";
 import { GpibLogo } from "./GpibLogo";
+import { auth, googleProvider, signInWithPopup } from "../firebase";
 
 interface GoogleSignInModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [animatingStage, setAnimatingStage] = useState<"SELECT" | "LOADING" | "SUCCESS">("SELECT");
   const [hasConsented, setHasConsented] = useState(true);
+  const [emailInput, setEmailInput] = useState("");
 
   // Set context variables depending on targetRole
   const getRoleTitle = () => {
@@ -34,59 +36,101 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
     }
   };
 
-  const getAuthorizedAccounts = () => {
-    const list = [
-      {
-        email: "fritssigerdkayadoe@gmail.com",
-        name: "Frits Sigerd Kayadoe",
-        label: "Jemaat Aktif",
-        avatarBg: "bg-sky-600 text-white",
-        initials: "FK"
-      }
-    ];
+  const masterAdmin = "fritssigerdkayadoe@gmail.com"; // using the user's email as master admin
+  
+  const validateAccess = (email: string, role: string | null) => {
+    if (role === "PATIENT") return true; // Anyone can be a patient
 
-    if (targetRole === "DOCTOR") {
-      list.unshift({
-        email: "dr.sarah@gpibbukitzaitun.org",
-        name: "dr. Sarah Taylor, Sp.PD",
-        label: "Dokter Spesialis Relawan",
-        avatarBg: "bg-emerald-600 text-white",
-        initials: "ST"
-      });
-    } else if (targetRole === "ADMIN") {
-      list.unshift({
-        email: "admin@gpibbukitzaitun.org",
-        name: "Admin Diakonia Bukit Zaitun",
-        label: "Pengawas Keamanan Utama",
-        avatarBg: "bg-slate-900 text-brand-cream",
-        initials: "AD"
-      });
+    // Fetch authorized lists from localStorage (simulating database)
+    const storedDoctors = JSON.parse(localStorage.getItem("authorizedDoctors") || '["dr.sarah@gpibbukitzaitun.org"]');
+    const storedAdmins = JSON.parse(localStorage.getItem("authorizedAdmins") || '["admin@gpibbukitzaitun.org"]');
+
+    if (role === "DOCTOR") {
+      if (email !== masterAdmin && !storedDoctors.includes(email)) {
+        return false;
+      }
     }
-    return list;
+
+    if (role === "ADMIN") {
+      if (email !== masterAdmin && !storedAdmins.includes(email)) {
+        return false;
+      }
+    }
+
+    return true;
   };
 
-  const handleSelectAccount = (email: string) => {
+  const handleGoogleLogin = async () => {
     if (!hasConsented) {
       alert("Harap setujui pernyataan kepatuhan keamanan data medis sebelum melanjutkan.");
       return;
     }
-    setSelectedEmail(email);
+    
+    try {
+      setAnimatingStage("LOADING");
+      // Force account selection so it doesn't automatically login with remembered accounts
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      const result = await signInWithPopup(auth, googleProvider);
+      const userEmail = result.user.email || "";
+
+      if (!validateAccess(userEmail, targetRole)) {
+        await auth.signOut();
+        throw new Error("Akun Anda belum didaftarkan oleh Master Admin untuk akses " + targetRole);
+      }
+
+      // Store current user to be accessible in the app
+      localStorage.setItem("currentUser", JSON.stringify({ email: userEmail, role: targetRole }));
+      
+      setAnimatingStage("SUCCESS");
+      setTimeout(() => {
+        if (targetRole) {
+          onSuccess(targetRole);
+        }
+        setAnimatingStage("SELECT");
+        onClose();
+      }, 1400);
+    } catch (error: any) {
+      console.error("Google Auth Error", error);
+      setAnimatingStage("SELECT");
+      alert("Gagal masuk: " + (error.message || "Akses Ditolak"));
+    }
+  };
+
+  const handleManualEmailLogin = () => {
+    if (!hasConsented) {
+      alert("Harap setujui pernyataan kepatuhan keamanan data medis sebelum melanjutkan.");
+      return;
+    }
+    if (!emailInput) {
+      alert("Harap masukkan alamat email.");
+      return;
+    }
+
+    if (!validateAccess(emailInput, targetRole)) {
+      alert("Gagal masuk: Akun Anda belum didaftarkan oleh Master Admin untuk akses " + targetRole);
+      return;
+    }
+
     setAnimatingStage("LOADING");
 
-    // Simulate authentic security handshake
+    localStorage.setItem("currentUser", JSON.stringify({ email: emailInput, role: targetRole }));
+
     setTimeout(() => {
       setAnimatingStage("SUCCESS");
       setTimeout(() => {
         if (targetRole) {
           onSuccess(targetRole);
         }
-        // Reset states for future usage
-        setSelectedEmail(null);
+        setEmailInput("");
         setAnimatingStage("SELECT");
         onClose();
       }, 1400);
     }, 1800);
   };
+
 
   if (!isOpen) return null;
 
@@ -142,47 +186,55 @@ export const GoogleSignInModal: React.FC<GoogleSignInModalProps> = ({
                   </div>
 
                   <p className="text-xs text-slate-450 font-bold uppercase tracking-widest mt-1">SINKRONISASI REKAM MEDIS</p>
-                  <h3 className="text-xl font-black text-slate-900 mt-0.5 tracking-tight">Pilih Akun Google Anda</h3>
+                  <h3 className="text-xl font-black text-slate-900 mt-0.5 tracking-tight">Kredensial Akses</h3>
                   <div className="mt-1.5 flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg">
                     <GpibLogo size={18} />
                     <span className="text-[10px] text-brand-blue font-bold tracking-wide uppercase">{getRoleTitle()}</span>
                   </div>
                 </div>
 
-                {/* Account Choice selectors List */}
-                <div className="space-y-2.5 mb-6">
-                  {getAuthorizedAccounts().map((acc, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleSelectAccount(acc.email)}
-                      className="w-full flex items-center justify-between p-3.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-brand-blue/30 active:scale-[0.99] transition-all text-left cursor-pointer group shadow-2xs"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full ${acc.avatarBg} flex items-center justify-center font-bold text-sm tracking-wide shadow-2xs`}>
-                          {acc.initials}
-                        </div>
-                        <div>
-                          <span className="font-extrabold text-sm text-slate-800 block leading-tight">{acc.name}</span>
-                          <span className="text-xs text-slate-500 font-medium block">{acc.email}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 roundedbg-slate-100 text-slate-500 uppercase tracking-widest bg-slate-100 text-[8px] text-slate-450">
-                          {acc.label}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-slate-350 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-                  ))}
-
-                  {/* Add standard alternative */}
+                {/* Google Sign In Button */}
+                <div className="space-y-4 mb-6">
                   <button
-                    onClick={() => handleSelectAccount(`visitor.${Date.now() % 100}@gmail.com`)}
-                    className="w-full flex items-center justify-between p-3 border border-slate-200 border-dashed rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-left cursor-pointer group text-xs text-slate-500 font-semibold"
+                    onClick={handleGoogleLogin}
+                    className="w-full flex items-center justify-center gap-3 p-3.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:shadow-sm transition-all focus:ring-2 focus:ring-brand-blue/20 cursor-pointer"
                   >
-                    <span className="pl-2">Gunakan akun Google pengetesan lainnya</span>
-                    <span className="text-[11px] font-bold text-brand-blue pr-2">Masuk Baru</span>
+                    <svg className="h-5 w-5" viewBox="0 0 24 24">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                    <span className="font-bold text-slate-700 text-sm">Lanjutkan dengan Google</span>
                   </button>
+                </div>
+
+                <div className="relative flex items-center py-2 mb-4">
+                  <div className="flex-grow border-t border-slate-200"></div>
+                  <span className="flex-shrink-0 mx-4 text-xs font-bold text-slate-400">Atau masuk dengan email</span>
+                  <div className="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                {/* Email Input */}
+                <div className="space-y-4 mb-6 w-full">
+                  <div className="flex flex-col gap-1 w-full text-left">
+                    <input 
+                      type="email" 
+                      placeholder="Masukkan alamat email alternatif" 
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue text-sm text-slate-800"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={handleManualEmailLogin}
+                      className="bg-brand-blue hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm transition-colors cursor-pointer"
+                    >
+                      Masuk Manual
+                    </button>
+                  </div>
                 </div>
 
                 {/* Consent Compliance Agreement */}
